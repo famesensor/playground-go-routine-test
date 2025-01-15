@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/famesensor/playground-go-routine-test/port/mock"
 	"github.com/famesensor/playground-go-routine-test/service"
@@ -43,60 +44,60 @@ func TestServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(serviceTestSuite))
 }
 
-// func (s *serviceTestSuite) TestGetSuccessAndSetFailed() {
-// 	s.mockRedis.EXPECT().Get(s.ctx, 2).Return(0, nil)
-// 	s.mockPostgres.EXPECT().Get(s.ctx, 2).Return(200, nil)
+func (s *serviceTestSuite) TestGetSuccessAndSetFailed() {
+	s.mockRedis.EXPECT().Get(s.ctx, 2).Return(0, nil)
+	s.mockPostgres.EXPECT().Get(s.ctx, 2).Return(200, nil)
 
-// 	// Use WaitGroup to synchronize the goroutine
-// 	s.wg.Add(1)
-// 	s.mockRedis.EXPECT().Set(s.ctx, "id", 200, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
-// 		defer s.wg.Done() // Mark the goroutine as done
-// 		return errors.New("redis set error")
-// 	})
+	// Use WaitGroup to synchronize the goroutine
+	s.wg.Add(1)
+	s.mockRedis.EXPECT().Set(s.ctx, "id", 200, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
+		defer s.wg.Done() // Mark the goroutine as done
+		return errors.New("redis set error")
+	})
 
-// 	res, err := s.service.Get(s.ctx, 2)
-// 	s.wg.Wait() // Wait for the goroutine to finish
+	res, err := s.service.Get(s.ctx, 2)
+	s.wg.Wait() // Wait for the goroutine to finish
 
-// 	s.NoError(err)
-// 	s.Equal(200, res)
-// }
+	s.NoError(err)
+	s.Equal(200, res)
+}
 
-// func (s *serviceTestSuite) TestGetSuccess() {
-// 	s.mockRedis.EXPECT().Get(s.ctx, 2).Return(0, nil)
-// 	s.mockPostgres.EXPECT().Get(s.ctx, 2).Return(200, nil)
+func (s *serviceTestSuite) TestGetSuccess() {
+	s.mockRedis.EXPECT().Get(s.ctx, 2).Return(0, nil)
+	s.mockPostgres.EXPECT().Get(s.ctx, 2).Return(200, nil)
 
-// 	// Use WaitGroup to synchronize the goroutine
-// 	s.wg.Add(1)
-// 	s.mockRedis.EXPECT().Set(s.ctx, "id", 200, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
-// 		defer s.wg.Done() // Mark the goroutine as done
-// 		return nil
-// 	})
+	// Use WaitGroup to synchronize the goroutine
+	s.wg.Add(1)
+	s.mockRedis.EXPECT().Set(s.ctx, "id", 200, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
+		defer s.wg.Done() // Mark the goroutine as done
+		return nil
+	})
 
-// 	res, err := s.service.Get(s.ctx, 2)
-// 	s.wg.Wait() // Wait for the goroutine to finish
+	res, err := s.service.Get(s.ctx, 2)
+	s.wg.Wait() // Wait for the goroutine to finish
 
-// 	s.NoError(err)
-// 	s.Equal(200, res)
-// }
+	s.NoError(err)
+	s.Equal(200, res)
+}
 
-// func (s *serviceTestSuite) TestGetWithWaitSuccess() {
-// 	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)
-// 	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
+func (s *serviceTestSuite) TestGetWithWaitSuccess() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
 
-// 	res, err := s.service.GetWithWait(s.ctx, 2)
+	res, err := s.service.GetWithWait(s.ctx, 2)
 
-// 	s.NoError(err)
-// 	s.Equal(2, res)
-// }
+	s.NoError(err)
+	s.Equal(2, res)
+}
 
-// func (s *serviceTestSuite) TestGetWithWaitFailed() {
-// 	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, errors.New("redis set error"))
-// 	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
+func (s *serviceTestSuite) TestGetWithWaitFailed() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, errors.New("redis set error"))
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
 
-// 	_, err := s.service.GetWithWait(s.ctx, 2)
+	_, err := s.service.GetWithWait(s.ctx, 2)
 
-// 	s.Error(err)
-// }
+	s.Error(err)
+}
 
 func (s *serviceTestSuite) TestGetWithWaitChannelSuccess() {
 	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)

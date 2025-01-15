@@ -112,13 +112,13 @@ func (s *service) GetWithWaitChannel(ctx context.Context, id int) (int, error) {
 	return <-c + <-t, nil
 }
 
-func (s *service) getCustomerChannel(ctx context.Context, id int, ch chan int, errCh chan error) {
+func (s *service) getCustomerChannel(ctx context.Context, id int, ch chan<- int, errCh chan<- error) {
 	res, err := s.customer.Get(ctx, id)
 	ch <- res
 	errCh <- err
 }
 
-func (s *service) getTransactionChannel(ctx context.Context, id int, ch chan int, errCh chan error) {
+func (s *service) getTransactionChannel(ctx context.Context, id int, ch chan<- int, errCh chan<- error) {
 	res, err := s.transaction.Get(ctx, id)
 	ch <- res
 	errCh <- err
