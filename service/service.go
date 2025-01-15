@@ -61,13 +61,12 @@ func (s *service) GetWithWait(ctx context.Context, id int) (int, error) {
 		t   int
 	)
 
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		c, err = s.customer.Get(ctx, id)
 	}()
 
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		t, err = s.transaction.Get(ctx, id)
