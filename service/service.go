@@ -91,8 +91,14 @@ func (s *service) GetWithWaitChannel(ctx context.Context, id int) (int, error) {
 	)
 
 	wg.Add(2)
-	go s.getCustomerChannel(ctx, id, &wg, c, errC)
-	go s.getTransactionChannel(ctx, id, &wg, t, errT)
+	go func() {
+		defer wg.Done()
+		s.getCustomerChannel(ctx, id, c, errC)
+	}()
+	go func() {
+		defer wg.Done()
+		s.getTransactionChannel(ctx, id, t, errT)
+	}()
 	wg.Wait()
 
 	if err := <-errC; err != nil {
@@ -106,20 +112,14 @@ func (s *service) GetWithWaitChannel(ctx context.Context, id int) (int, error) {
 	return <-c + <-t, nil
 }
 
-func (s *service) getCustomerChannel(ctx context.Context, id int, wg *sync.WaitGroup, ch chan int, errCh chan error) {
-	defer wg.Done()
+func (s *service) getCustomerChannel(ctx context.Context, id int, ch chan int, errCh chan error) {
 	res, err := s.customer.Get(ctx, id)
-	errCh <- err
 	ch <- res
-	close(ch)
-	close(errCh)
+	errCh <- err
 }
 
-func (s *service) getTransactionChannel(ctx context.Context, id int, wg *sync.WaitGroup, ch chan int, errCh chan error) {
-	defer wg.Done()
+func (s *service) getTransactionChannel(ctx context.Context, id int, ch chan int, errCh chan error) {
 	res, err := s.transaction.Get(ctx, id)
-	errCh <- err
 	ch <- res
-	close(ch)
-	close(errCh)
+	errCh <- err
 }
