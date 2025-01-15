@@ -15,12 +15,14 @@ import (
 
 type serviceTestSuite struct {
 	suite.Suite
-	ctrl         *gomock.Controller
-	ctx          context.Context
-	service      service.Service
-	mockPostgres *mock.MockPostgres
-	mockRedis    *mock.MockRedis
-	wg           *sync.WaitGroup
+	ctrl            *gomock.Controller
+	ctx             context.Context
+	service         service.Service
+	mockPostgres    *mock.MockPostgres
+	mockRedis       *mock.MockRedis
+	mockCustomer    *mock.MockCustomer
+	mockTransaction *mock.MockTransaction
+	wg              *sync.WaitGroup
 }
 
 func (s *serviceTestSuite) SetupTest() {
@@ -28,8 +30,10 @@ func (s *serviceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.mockPostgres = mock.NewMockPostgres(s.ctrl)
 	s.mockRedis = mock.NewMockRedis(s.ctrl)
-	s.wg = &sync.WaitGroup{}
-	s.service = service.New(s.mockPostgres, s.mockRedis)
+	s.mockCustomer = mock.NewMockCustomer(s.ctrl)
+	s.mockTransaction = mock.NewMockTransaction(s.ctrl)
+	s.wg = new(sync.WaitGroup)
+	s.service = service.New(s.mockPostgres, s.mockRedis, s.mockCustomer, s.mockTransaction)
 }
 
 func (s *serviceTestSuite) TearDownTest() {
@@ -76,77 +80,49 @@ func (s *serviceTestSuite) TestGetSuccess() {
 	s.Equal(200, res)
 }
 
-// func TestService_Get(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
+func (s *serviceTestSuite) TestGetWithWaitSuccess() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
 
-// 	mockPostgres := mock.NewMockPostgres(ctrl)
-// 	mockRedis := mock.NewMockRedis(ctrl)
+	res, err := s.service.GetWithWait(s.ctx, 2)
 
-// 	svc := service.New(mockPostgres, mockRedis)
-// 	ctx := context.Background()
+	s.NoError(err)
+	s.Equal(2, res)
+}
 
-// 	var wg sync.WaitGroup
+func (s *serviceTestSuite) TestGetWithWaitFailed() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, errors.New("redis set error"))
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(1, nil)
 
-// 	t.Run("should return value from Redis", func(t *testing.T) {
-// 		mockRedis.EXPECT().Get(ctx, 1).Return(100, nil)
+	_, err := s.service.GetWithWait(s.ctx, 2)
 
-// 		res, err := svc.Get(ctx, 1)
+	s.Error(err)
+}
 
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, 100, res)
-// 	})
+func (s *serviceTestSuite) TestGetWithWaitChannelSuccess() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(2, nil)
 
-// 	t.Run("should return value from Postgres and update Redis", func(t *testing.T) {
-// 		mockRedis.EXPECT().Get(ctx, 2).Return(0, nil)
-// 		mockPostgres.EXPECT().Get(ctx, 2).Return(200, nil)
+	res, err := s.service.GetWithWaitChannel(s.ctx, 2)
 
-// 		// Use WaitGroup to synchronize the goroutine
-// 		wg.Add(1)
-// 		mockRedis.EXPECT().Set(ctx, "id", 200, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
-// 			defer wg.Done() // Mark the goroutine as done
-// 			return nil
-// 		})
+	s.NoError(err)
+	s.Equal(3, res)
+}
 
-// 		res, err := svc.Get(ctx, 2)
-// 		wg.Wait() // Wait for the goroutine to finish
+func (s *serviceTestSuite) TestGetWithWaitChannelCustomerFailed() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, errors.New("error"))
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(2, nil)
 
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, 200, res)
-// 	})
+	_, err := s.service.GetWithWaitChannel(s.ctx, 2)
 
-// 	t.Run("should handle Redis Get error", func(t *testing.T) {
-// 		mockRedis.EXPECT().Get(ctx, 3).Return(0, errors.New("redis error"))
+	s.Error(err)
+}
 
-// 		res, err := svc.Get(ctx, 3)
+func (s *serviceTestSuite) TestGetWithWaitChannelTransactionFailed() {
+	s.mockCustomer.EXPECT().Get(s.ctx, 2).Return(1, nil)
+	s.mockTransaction.EXPECT().Get(s.ctx, 2).Return(0, errors.New("error"))
 
-// 		assert.Error(t, err)
-// 		assert.Equal(t, 0, res)
-// 	})
+	_, err := s.service.GetWithWaitChannel(s.ctx, 2)
 
-// 	t.Run("should handle Postgres Get error", func(t *testing.T) {
-// 		mockRedis.EXPECT().Get(ctx, 4).Return(0, nil)
-// 		mockPostgres.EXPECT().Get(ctx, 4).Return(0, errors.New("postgres error"))
-
-// 		res, err := svc.Get(ctx, 4)
-
-// 		assert.Error(t, err)
-// 		assert.Equal(t, 0, res)
-// 	})
-
-// 	t.Run("should log error on Redis Set failure", func(t *testing.T) {
-// 		mockRedis.EXPECT().Get(ctx, 5).Return(0, nil)
-// 		mockPostgres.EXPECT().Get(ctx, 5).Return(500, nil)
-// 		wg.Add(1)
-// 		mockRedis.EXPECT().Set(ctx, "id", 500, 5*time.Minute).DoAndReturn(func(ctx context.Context, key string, value int, ttl time.Duration) error {
-// 			defer wg.Done() // Mark the goroutine as done
-// 			return errors.New("redis set error")
-// 		})
-
-// 		res, err := svc.Get(ctx, 5)
-// 		wg.Wait() // Wait for the goroutine to finish
-
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, 500, res)
-// 	})
-// }
+	s.Error(err)
+}
